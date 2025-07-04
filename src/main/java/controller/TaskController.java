@@ -1,9 +1,10 @@
 package controller;
 
-
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -105,12 +106,40 @@ public class TaskController extends HttpServlet {
             String description = request.getParameter("description");
             String dueDateStr = request.getParameter("dueDate");
             String priority = request.getParameter("priority");
+            String tagIdStr = request.getParameter("tagId");
 
             LocalDate dueDate = (dueDateStr != null && !dueDateStr.isEmpty()) ? LocalDate.parse(dueDateStr) : null;
+            Integer tagId = (tagIdStr != null && !tagIdStr.isEmpty() && !"0".equals(tagIdStr)) ? Integer.parseInt(tagIdStr) : null;
 
             Task task = taskDao.getTaskById(taskId, userId);
             if (task != null) {
+                // Validation cho subtask: due_date không được sau parent task
+                if (task.getParentTaskId() != null && dueDate != null) {
+                    Task parentTask = taskDao.getTaskById(task.getParentTaskId(), userId);
+                    if (parentTask != null && parentTask.getDueDate() != null) {
+                        if (dueDate.isAfter(parentTask.getDueDate())) {
+                            request.setAttribute("error", "Ngày hết hạn của subtask không được sau ngày hết hạn của task cha (" + parentTask.getDueDate() + ")!");
+                            response.sendRedirect("home?listId=" + listId);
+                            return;
+                        }
+                    }
+                }
+                
+                // Validation cho parent task: due_date không được trước subtasks
+                if (task.getParentTaskId() == null && dueDate != null) {
+                    // Kiểm tra các subtasks của task này
+                    List<Task> subtasks = taskDao.getSubtasksByParentId(taskId, userId);
+                    for (Task subtask : subtasks) {
+                        if (subtask.getDueDate() != null && dueDate.isBefore(subtask.getDueDate())) {
+                            request.setAttribute("error", "Ngày hết hạn của task cha không được trước ngày hết hạn của subtask (" + subtask.getTitle() + ": " + subtask.getDueDate() + ")!");
+                            response.sendRedirect("home?listId=" + listId);
+                            return;
+                        }
+                    }
+                }
+                
                 task.setListId(listId);
+                task.setTagId(tagId);
                 task.setTitle(taskName);
                 task.setDescription(description);
                 task.setDueDate(dueDate);
@@ -161,6 +190,18 @@ public class TaskController extends HttpServlet {
             System.out.println("addSubtask params - parentTaskId: " + parentTaskId + ", listId: " + listId + ", taskName: " + taskName); // Debug log
 
             LocalDate dueDate = (dueDateStr != null && !dueDateStr.isEmpty()) ? LocalDate.parse(dueDateStr) : null;
+
+            // Validate due_date với parent task
+            if (dueDate != null) {
+                Task parentTask = taskDao.getTaskById(parentTaskId, userId);
+                if (parentTask != null && parentTask.getDueDate() != null) {
+                    if (dueDate.isAfter(parentTask.getDueDate())) {
+                        request.setAttribute("error", "Ngày hết hạn của subtask không được sau ngày hết hạn của task cha (" + parentTask.getDueDate() + ")!");
+                        response.sendRedirect("home?listId=" + listId);
+                        return;
+                    }
+                }
+            }
 
             Task subtask = new Task();
             subtask.setUserId(userId);

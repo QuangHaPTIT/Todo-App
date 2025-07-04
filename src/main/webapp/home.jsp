@@ -1066,6 +1066,8 @@
                              data-task-due-date="${task.dueDate}"
                              data-task-priority="${task.priority}"
                              data-task-status="${task.status}"
+                             data-parent-task-id="${task.parentTaskId}"
+                             data-tag-id="${task.tagId}"
                              onclick="showTaskDetailFromElement(this)">
                             <div class="task-left">
                                 <div class="task-icon" style="background: #4a90e2">
@@ -1089,9 +1091,24 @@
                                         </c:if>
                                         <!-- Tag cho task cha -->
                                         <c:if test="${task.parentTaskId == null || task.parentTaskId == 0}">
-                                            <span class="task-tag" style="background: #e3f2fd; color: #1976d2; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 8px;">
-                                                🏷️ Task Cha
-                                            </span>
+                                            <c:choose>
+                                                <c:when test="${task.tagId != null && task.tagId > 0}">
+                                                    <!-- Hiển thị tag thực tế -->
+                                                    <c:forEach var="tag" items="${tags}">
+                                                        <c:if test="${tag.tagId == task.tagId}">
+                                                            <span class="task-tag" style="background: ${tag.colorCode}; color: ${tag.textColor}; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 8px;">
+                                                                🏷️ ${tag.tagName}
+                                                            </span>
+                                                        </c:if>
+                                                    </c:forEach>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <!-- Hiển thị "Task Cha" nếu chưa có tag -->
+                                                    <span class="task-tag" style="background: #e3f2fd; color: #1976d2; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 8px;">
+                                                        🏷️ Task Cha
+                                                    </span>
+                                                </c:otherwise>
+                                            </c:choose>
                                         </c:if>
                                         <c:if test="${task.priority != null}">
                                             <span class="task-tag" style="background: 
@@ -1151,7 +1168,10 @@
                                          data-task-list-id="${subtask.listId}"
                                          data-task-due-date="${subtask.dueDate}"
                                          data-task-priority="${subtask.priority}"
-                                         data-task-status="${subtask.status}">
+                                         data-task-status="${subtask.status}"
+                                         data-parent-task-id="${subtask.parentTaskId}"
+                                         data-tag-id="${subtask.tagId}"
+                                         data-parent-due-date="${task.dueDate}">
                                         <div class="task-left" onclick="showTaskDetailFromElement(this.parentElement)">
                                             <div class="subtask-icon">┣━</div>
                                             <div class="task-content">
@@ -1212,15 +1232,21 @@
                                     <input type="text" name="taskName" class="subtask-input" placeholder="Nhập tên subtask..." required>
                                     <textarea name="description" class="subtask-input" placeholder="Mô tả subtask..." rows="2"></textarea>
                                     <div style="display: flex; gap: 10px;">
-                                        <input type="date" name="dueDate" class="subtask-input" style="flex: 1;">
+                                        <input type="date" name="dueDate" class="subtask-input" style="flex: 1;" 
+                                               data-parent-due-date="${task.dueDate}" 
+                                               max="${task.dueDate}" 
+                                               onchange="validateSubtaskDueDate(this, ${task.taskId})">
                                         <select name="priority" class="subtask-input" style="flex: 1;">
                                             <option value="LOW">Thấp</option>
                                             <option value="MEDIUM">Trung bình</option>
                                             <option value="HIGH">Cao</option>
                                         </select>
                                     </div>
+                                    <div id="due-date-error-${task.taskId}" style="color: #ff4757; font-size: 12px; margin-top: 5px; display: none;">
+                                        Ngày hết hạn của subtask không được sau ngày hết hạn của task cha.
+                                    </div>
                                     <div class="subtask-actions">
-                                        <button type="submit" class="btn-sm btn-primary">Thêm Subtask</button>
+                                        <button type="submit" class="btn-sm btn-primary" id="submit-subtask-${task.taskId}">Thêm Subtask</button>
                                         <button type="button" class="btn-sm btn-secondary" onclick="hideAddSubtaskForm(${task.taskId})">Hủy</button>
                                     </div>
                                 </form>
@@ -1284,7 +1310,10 @@
 
             <div class="detail-field">
                 <div class="detail-label">Ngày hết hạn</div>
-                <input type="date" name="dueDate" id="taskDueDate" class="date-field" value="">
+                <input type="date" name="dueDate" id="taskDueDate" class="date-field" value="" onchange="validateTaskDetailDueDate()">
+            </div>
+            <div id="detail-due-date-error" style="color: #ff4757; font-size: 12px; margin-top: -15px; margin-bottom: 15px; display: none;">
+                Ngày hết hạn của subtask không được sau ngày hết hạn của task cha.
             </div>
 
             <div class="detail-field">
@@ -1293,6 +1322,16 @@
                     <option value="LOW">Thấp</option>
                     <option value="MEDIUM">Trung bình</option>
                     <option value="HIGH">Cao</option>
+                </select>
+            </div>
+
+            <div class="detail-field" id="tagFieldContainer" style="display: none;">
+                <div class="detail-label">Thẻ (Tag)</div>
+                <select name="tagId" id="taskTag" class="select-field">
+                    <option value="">-- Chọn thẻ --</option>
+                    <c:forEach var="tag" items="${tags}">
+                        <option value="${tag.tagId}">${tag.tagName}</option>
+                    </c:forEach>
                 </select>
             </div>
 
@@ -1312,6 +1351,16 @@
     </div>
 
     <script>
+        // Tạo map tags để dễ dàng tra cứu tên tag
+        const tagsMap = {};
+        <c:forEach var="tag" items="${tags}">
+            tagsMap[${tag.tagId}] = {
+                name: '<c:out value="${tag.tagName}" escapeXml="true"/>',
+                color: '<c:out value="${tag.colorCode}" escapeXml="true"/>',
+                textColor: '<c:out value="${tag.textColor}" escapeXml="true"/>'
+            };
+        </c:forEach>
+
         // Hiển thị/ẩn form thêm danh sách
         function showAddListForm() {
             const form = document.getElementById('addListForm');
@@ -1369,12 +1418,15 @@
             const dueDate = element.getAttribute('data-task-due-date') || '';
             const priority = element.getAttribute('data-task-priority') || 'LOW';
             const status = element.getAttribute('data-task-status') || 'PENDING';
+            const parentTaskId = element.getAttribute('data-parent-task-id');
+            const tagId = element.getAttribute('data-tag-id');
             
-            showTaskDetail(taskId, title, description, listId, dueDate, priority, status);
+            // Truyền element để có thể lấy thêm thông tin nếu cần
+            showTaskDetail(taskId, title, description, listId, dueDate, priority, status, parentTaskId, tagId, element);
         }
 
         // Hiển thị chi tiết công việc
-        function showTaskDetail(taskId, title, description, listId, dueDate, priority, status) {
+        function showTaskDetail(taskId, title, description, listId, dueDate, priority, status, parentTaskId, tagId, element) {
             const panel = document.getElementById('taskDetailPanel');
             const taskTitle = document.getElementById('taskTitle');
             const currentTaskIdInput = document.getElementById('currentTaskId');
@@ -1384,6 +1436,9 @@
             const taskDueDateInput = document.getElementById('taskDueDate');
             const taskPrioritySelect = document.getElementById('taskPriority');
             const taskStatusSelect = document.getElementById('taskStatus');
+            const tagFieldContainer = document.getElementById('tagFieldContainer');
+            const taskTagSelect = document.getElementById('taskTag');
+            const dueDateErrorDiv = document.getElementById('detail-due-date-error');
             
             // Hiển thị panel
             panel.classList.remove('hidden');
@@ -1399,6 +1454,51 @@
             taskDueDateInput.value = dueDate || "";
             taskPrioritySelect.value = priority || "LOW";
             taskStatusSelect.value = status || "PENDING";
+            
+            // Reset các thuộc tính data- trước
+            taskDueDateInput.removeAttribute('data-parent-task-id');
+            taskDueDateInput.removeAttribute('data-parent-due-date');
+            taskDueDateInput.removeAttribute('max');
+            
+            // Hiển thị/ẩn tag field chỉ cho task cha
+            if (!parentTaskId || parentTaskId == 'null' || parentTaskId == '' || parentTaskId == '0') {
+                // Task cha - hiển thị tag field
+                tagFieldContainer.style.display = 'block';
+                taskTagSelect.value = tagId || '';
+                dueDateErrorDiv.style.display = 'none';
+            } else {
+                // Task con - ẩn tag field
+                tagFieldContainer.style.display = 'none';
+                taskTagSelect.value = '';
+                
+                // Lưu thông tin parent task ID và setup validation cho due date
+                taskDueDateInput.setAttribute('data-parent-task-id', parentTaskId);
+                
+                // Kiểm tra xem đã có thông tin parentDueDate từ element không (thông tin từ data-parent-due-date attribute)
+                const parentDueDate = element ? element.getAttribute('data-parent-due-date') : null;
+                
+                if (parentDueDate) {
+                    // Nếu element đã có sẵn thông tin về parent due date, sử dụng nó
+                    taskDueDateInput.setAttribute('data-parent-due-date', parentDueDate);
+                    taskDueDateInput.setAttribute('max', parentDueDate);
+                    
+                    // Validate ngay khi hiển thị
+                    validateTaskDetailDueDate();
+                } else {
+                    // Tìm task cha để lấy due date nếu chưa có thông tin
+                    const parentTaskElement = document.querySelector(`.task-item[data-task-id="${parentTaskId}"]`);
+                    if (parentTaskElement) {
+                        const parentTaskDueDate = parentTaskElement.getAttribute('data-task-due-date');
+                        if (parentTaskDueDate) {
+                            taskDueDateInput.setAttribute('data-parent-due-date', parentTaskDueDate);
+                            taskDueDateInput.setAttribute('max', parentTaskDueDate);
+                            
+                            // Validate ngay khi hiển thị
+                            validateTaskDetailDueDate();
+                        }
+                    }
+                }
+            }
         }
         
         function setDeleteTaskId() {
@@ -1513,6 +1613,78 @@
             const form = document.getElementById('editTagForm');
             form.classList.add('hidden');
             form.querySelector('form').reset();
+        }
+
+        // Validate dueDate cho subtask trong form Add Subtask
+        function validateSubtaskDueDate(input, taskId) {
+            const parentDueDate = input.getAttribute('data-parent-due-date');
+            const errorDiv = document.getElementById('due-date-error-' + taskId);
+            const submitBtn = document.getElementById('submit-subtask-' + taskId);
+            
+            // Nếu task cha không có due date hoặc subtask không có due date
+            if (!parentDueDate || !input.value) {
+                errorDiv.style.display = 'none';
+                submitBtn.disabled = false;
+                return;
+            }
+            
+            // Convert to dates for comparison
+            const subtaskDate = new Date(input.value);
+            const parentDate = new Date(parentDueDate);
+            
+            // Set time to midnight for accurate date comparison
+            subtaskDate.setHours(0, 0, 0, 0);
+            parentDate.setHours(0, 0, 0, 0);
+            
+            if (subtaskDate > parentDate) {
+                errorDiv.style.display = 'block';
+                submitBtn.disabled = true;
+            } else {
+                errorDiv.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        }
+        
+        // Validate dueDate cho subtask trong Task Detail Panel
+        function validateTaskDetailDueDate() {
+            const taskDueDateInput = document.getElementById('taskDueDate');
+            const dueDateErrorDiv = document.getElementById('detail-due-date-error');
+            const saveBtn = document.querySelector('#taskUpdateForm .save-btn');
+            
+            // Kiểm tra xem đây có phải là subtask không (có parent task id)
+            const parentTaskId = taskDueDateInput.getAttribute('data-parent-task-id');
+            if (!parentTaskId) {
+                // Đây là task cha, không cần validate
+                dueDateErrorDiv.style.display = 'none';
+                saveBtn.disabled = false;
+                return;
+            }
+            
+            // Lấy due date của task cha
+            const parentDueDate = taskDueDateInput.getAttribute('data-parent-due-date');
+            
+            // Nếu task cha không có due date hoặc subtask không có due date
+            if (!parentDueDate || !taskDueDateInput.value) {
+                dueDateErrorDiv.style.display = 'none';
+                saveBtn.disabled = false;
+                return;
+            }
+            
+            // Convert to dates for comparison
+            const subtaskDate = new Date(taskDueDateInput.value);
+            const parentDate = new Date(parentDueDate);
+            
+            // Set time to midnight for accurate date comparison
+            subtaskDate.setHours(0, 0, 0, 0);
+            parentDate.setHours(0, 0, 0, 0);
+            
+            if (subtaskDate > parentDate) {
+                dueDateErrorDiv.style.display = 'block';
+                saveBtn.disabled = true;
+            } else {
+                dueDateErrorDiv.style.display = 'none';
+                saveBtn.disabled = false;
+            }
         }
     </script>
 </body>

@@ -102,7 +102,8 @@ public class HomeController extends HttpServlet {
                 List<Task> parentTasks = new ArrayList<>();
                 for (Task task : allTasks) {
                 	System.out.println(task);
-                    if ((task.getParentTaskId() == null || task.getParentTaskId() == 0) && task.getDueDate().isEqual(LocalDate.now())) {
+                    if ((task.getParentTaskId() == null || task.getParentTaskId() == 0) 
+                    		&& task.getDueDate().isEqual(LocalDate.now())) {
                     	System.out.println(task);
                     	parentTasks.add(task);
                         // Chỉ lấy subtasks cho parent tasks

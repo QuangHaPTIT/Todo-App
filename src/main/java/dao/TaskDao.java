@@ -13,7 +13,6 @@ import model.Task;
 import utils.DBUtils;
 
 import java.util.ArrayList;
-import java.util.Collections;
 
 public class TaskDao {
 	
@@ -61,7 +60,7 @@ public class TaskDao {
     }
 
     public Task updateTask(Task task) {
-        String sql = "UPDATE tasks SET list_id = ?, title = ?, description = ?, due_date = ?, priority = ?, status = ?, " +
+        String sql = "UPDATE tasks SET list_id = ?, tag_id = ?, title = ?, description = ?, due_date = ?, priority = ?, status = ?, " +
                      "display_order = ?, updated_at = ? WHERE task_id = ? AND user_id = ?";
 
         Connection conn = null;
@@ -69,15 +68,16 @@ public class TaskDao {
             conn = DBUtils.getConnection();
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setObject(1, task.getListId());
-                pstmt.setString(2, task.getTitle());
-                pstmt.setString(3, task.getDescription());
-                pstmt.setObject(4, task.getDueDate());
-                pstmt.setString(5, task.getPriority());
-                pstmt.setString(6, task.getStatus());
-                pstmt.setInt(7, task.getDisplayOrder());
-                pstmt.setObject(8, LocalDateTime.now());
-                pstmt.setInt(9, task.getTaskId());
-                pstmt.setInt(10, task.getUserId());
+                pstmt.setObject(2, task.getTagId(), java.sql.Types.INTEGER);
+                pstmt.setString(3, task.getTitle());
+                pstmt.setString(4, task.getDescription());
+                pstmt.setObject(5, task.getDueDate());
+                pstmt.setString(6, task.getPriority());
+                pstmt.setString(7, task.getStatus());
+                pstmt.setInt(8, task.getDisplayOrder());
+                pstmt.setObject(9, LocalDateTime.now());
+                pstmt.setInt(10, task.getTaskId());
+                pstmt.setInt(11, task.getUserId());
 
                 int affectedRows = pstmt.executeUpdate();
                 if (affectedRows == 0) {
@@ -131,6 +131,7 @@ public class TaskDao {
                         task.setTaskId(rs.getInt("task_id"));
                         task.setUserId(rs.getInt("user_id"));
                         task.setListId(rs.getObject("list_id", Integer.class));
+                        task.setTagId(rs.getObject("tag_id", Integer.class));
                         task.setTitle(rs.getString("title"));
                         task.setDescription(rs.getString("description"));
                         task.setDueDate(rs.getObject("due_date", LocalDate.class));
@@ -151,12 +152,6 @@ public class TaskDao {
         return null;
     }
     
-    public List<Task> getTasksByUserIdAndDateNow(int userId, LocalDate nowDate) {
-    	String sql = "SELECT * FROM tasks WHERE userId = ? AND due_date = ? AND ";
-    	//TODO: Code continue;
-    	return Collections.emptyList();
-    }
-    
     public List<Task> getTasksByListId(int listId, int userId) {
         String sql = "SELECT * FROM tasks WHERE list_id = ? AND user_id = ? ORDER BY created_at DESC";
         List<Task> tasks = new ArrayList<>();
@@ -173,6 +168,7 @@ public class TaskDao {
                         Task task = new Task();
                         task.setTaskId(rs.getInt("task_id"));
                         task.setUserId(rs.getInt("user_id"));
+                        task.setTagId(rs.getInt("tag_id"));
                         task.setListId(rs.getObject("list_id", Integer.class));
                         task.setTitle(rs.getString("title"));
                         task.setDescription(rs.getString("description"));

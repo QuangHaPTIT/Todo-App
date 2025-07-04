@@ -88,6 +88,8 @@ public class TagDao {
 			pstmt.setInt(1, tagId);
 			pstmt.setInt(2, userId);
 			
+			clearTagInTasks(tagId); // xóa tag_id trong task trước khi xóa tag
+			
 			int rowsAffected = pstmt.executeUpdate();
 			
 			return rowsAffected > 0;
@@ -98,19 +100,29 @@ public class TagDao {
 		}
 	}
 	
+	private boolean clearTagInTasks(int tagId) throws SQLException {
+	    String sql = "UPDATE tasks SET tag_id = NULL WHERE tag_id = ?";
+	    
+	    try (Connection conn = DBUtils.getConnection();
+	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	        pstmt.setInt(1, tagId);
+	        int affected = pstmt.executeUpdate();
+	        return affected > 0; // true nếu có ít nhất 1 task bị ảnh hưởng
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        throw e;
+	    }
+	}
+
+	
 	public List<Tag> getAllTagByUserId(int user_id) {
-		System.out.println("=== DEBUG TagDao.getAllTagByUserId ===");
-		System.out.println("user_id parameter: " + user_id);
-		
 		String sql = "SELECT * FROM tags WHERE user_id = ?";
-		System.out.println("SQL query: " + sql);
 		
 		List<Tag> tags = new ArrayList<Tag>();
 		
 		try (Connection conn = DBUtils.getConnection(); 
 				PreparedStatement pstmt = conn.prepareStatement(sql)) {
 			pstmt.setInt(1, user_id);
-			System.out.println("Executing query with user_id: " + user_id);
 			
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while(rs.next()) {
@@ -121,20 +133,18 @@ public class TagDao {
 					tag.setColorCode(rs.getString("color_code"));
 					tag.setCreatedAt(rs.getObject("created_at", LocalDateTime.class));
 					
-					System.out.println("Found tag: " + tag.getTagName() + " (id: " + tag.getTagId() + ")");
 					tags.add(tag);
 				}
 			}
 			
-			System.out.println("Total tags found: " + tags.size());
+			System.out.printf("tag :", tags.size());
 		} catch (SQLException e) {
-			System.out.println("Error fetching tags: " + e.getMessage());
+			System.out.print("Error fetching tags" + e.getMessage());
 			e.printStackTrace();
 		}
-		
-		List<Tag> result = tags.isEmpty() ? Collections.emptyList() : tags;
-		System.out.println("Returning " + result.size() + " tags");
-		return result;
+		return tags.isEmpty() 
+				? Collections.emptyList() 
+				: tags;
 	}
 	
 	public Tag getTagById(int tagId, int userId) {
