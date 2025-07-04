@@ -13,6 +13,7 @@ import model.Task;
 import utils.DBUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class TaskDao {
 	
@@ -150,6 +151,11 @@ public class TaskDao {
         return null;
     }
     
+    public List<Task> getTasksByUserIdAndDateNow(int userId, LocalDate nowDate) {
+    	String sql = "SELECT * FROM tasks WHERE userId = ? AND due_date = ? AND ";
+    	//TODO: Code continue;
+    	return Collections.emptyList();
+    }
     
     public List<Task> getTasksByListId(int listId, int userId) {
         String sql = "SELECT * FROM tasks WHERE list_id = ? AND user_id = ? ORDER BY created_at DESC";
@@ -207,6 +213,7 @@ public class TaskDao {
                         task.setListId(rs.getObject("list_id", Integer.class));
                         task.setTitle(rs.getString("title"));
                         task.setDescription(rs.getString("description"));
+                        task.setParentTaskId(rs.getInt("parent_task_id"));
                         task.setDueDate(rs.getObject("due_date", LocalDate.class));
                         task.setPriority(rs.getString("priority"));
                         task.setStatus(rs.getString("status"));
@@ -342,6 +349,97 @@ public class TaskDao {
                 }
             }
         } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtils.closeConnection(conn);
+        }
+        return tasks;
+    }
+    
+    public List<Task> getTaskByDueDate(LocalDate dueDate) {
+    	String sql = "SELECT * FROM tasks WHERE due_date = ?";
+    	List<Task> tasks = new ArrayList<Task>();
+    	
+    	Connection conn = null;
+    	try {
+    		conn = DBUtils.getConnection();
+    		try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+    			pstmt.setObject(1, dueDate);
+    			try (ResultSet rs = pstmt.executeQuery()) {
+    				while (rs.next()) {
+    					Task task = new Task();
+                        task.setTaskId(rs.getInt("task_id"));
+                        task.setUserId(rs.getInt("user_id"));
+                        task.setListId(rs.getObject("list_id", Integer.class));
+                        task.setTagId(rs.getObject("tag_id", Integer.class));
+                        task.setTitle(rs.getString("title"));
+                        task.setDescription(rs.getString("description"));
+                        task.setDueDate(rs.getObject("due_date", LocalDate.class));
+                        task.setPriority(rs.getString("priority"));
+                        task.setStatus(rs.getString("status"));
+                        task.setParentTaskId(rs.getObject("parent_task_id", Integer.class));
+                        task.setDisplayOrder(rs.getInt("display_order"));
+                        task.setCreatedAt(rs.getObject("created_at", LocalDateTime.class));
+                        task.setUpdatedAt(rs.getObject("updated_at", LocalDateTime.class));
+                        task.setCompletedAt(rs.getObject("completed_at", LocalDateTime.class));
+                        
+                        tasks.add(task);
+    				}
+                }
+            }
+    	} catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtils.closeConnection(conn);
+        }
+        return tasks;
+    }
+    
+    public List<Task> getParentTasksDueToday(int userId, LocalDate today) {
+        String sql = "SELECT * FROM tasks WHERE user_id = ? AND due_date = ? AND parent_task_id IS NULL ORDER BY created_at DESC";
+        List<Task> tasks = new ArrayList<>();
+        
+        System.out.println("=== DEBUG TaskDao.getParentTasksDueToday ===");
+        System.out.println("SQL: " + sql);
+        System.out.println("userId: " + userId + ", today: " + today);
+        
+        Connection conn = null;
+        try {
+            conn = DBUtils.getConnection();
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, userId);
+                pstmt.setObject(2, today);
+                
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        Task task = new Task();
+                        task.setTaskId(rs.getInt("task_id"));
+                        task.setUserId(rs.getInt("user_id"));
+                        task.setListId(rs.getObject("list_id", Integer.class));
+                        task.setTagId(rs.getObject("tag_id", Integer.class));
+                        task.setTitle(rs.getString("title"));
+                        task.setDescription(rs.getString("description"));
+                        task.setDueDate(rs.getObject("due_date", LocalDate.class));
+                        task.setPriority(rs.getString("priority"));
+                        task.setStatus(rs.getString("status"));
+                        task.setParentTaskId(rs.getObject("parent_task_id", Integer.class));
+                        task.setDisplayOrder(rs.getInt("display_order"));
+                        task.setCreatedAt(rs.getObject("created_at", LocalDateTime.class));
+                        task.setUpdatedAt(rs.getObject("updated_at", LocalDateTime.class));
+                        task.setCompletedAt(rs.getObject("completed_at", LocalDateTime.class));
+                        
+                        System.out.println("Found task: ID=" + task.getTaskId() + 
+                                         ", Title=" + task.getTitle() + 
+                                         ", ParentID=" + task.getParentTaskId() + 
+                                         ", DueDate=" + task.getDueDate());
+                        
+                        tasks.add(task);
+                    }
+                }
+            }
+            System.out.println("Total parent tasks found: " + tasks.size());
+        } catch (SQLException e) {
+            System.out.println("Error in getParentTasksDueToday: " + e.getMessage());
             e.printStackTrace();
         } finally {
             DBUtils.closeConnection(conn);

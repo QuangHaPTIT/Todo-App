@@ -151,4 +151,25 @@ public class Task {
     public void setCompletedAt(LocalDateTime completedAt) {
         this.completedAt = completedAt;
     }
+    
+    @Override
+    public String toString() {
+        return "Task{" +
+                "taskId=" + taskId +
+                ", userId=" + userId +
+                ", listId=" + listId +
+                ", tagId=" + tagId +
+                ", title='" + title + '\'' +
+                ", description='" + description + '\'' +
+                ", dueDate=" + dueDate +
+                ", priority='" + priority + '\'' +
+                ", status='" + status + '\'' +
+                ", parentTaskId=" + parentTaskId +
+                ", displayOrder=" + displayOrder +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", completedAt=" + completedAt +
+                '}';
+    }
+
 }

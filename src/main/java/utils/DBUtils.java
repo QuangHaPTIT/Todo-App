@@ -40,4 +40,14 @@ public class DBUtils {
     public static boolean isDebugMode() {
         return ConfigLoader.getBooleanProperty("app.debug_mode");
     }
+    
+    public static void rollbackQuietly (Connection conn) {
+    	if(conn != null) {
+    		try {
+    			conn.rollback();
+    		} catch (SQLException e) {
+    			e.printStackTrace();
+    		}
+    	}
+    }
 }

@@ -42,6 +42,8 @@ public class UserDao {
 		if(user == null) return null;
 		
 		if(BCrypt.checkpw(password, user.getPassword())) {
+			
+			System.out.print("Hello" + " " +  user.getUsername());
 			return user;
 		}
 		return null;
@@ -60,7 +62,7 @@ public class UserDao {
                 user.setId(rs.getInt("id"));
                 user.setEmail(rs.getString("email"));
                 user.setPassword(rs.getString("password")); // hashed password
-                user.setUsername("username");
+                user.setUsername(rs.getString("username"));
                 return user;
             }
         } catch (SQLException e) {
@@ -78,12 +80,35 @@ public class UserDao {
 	        statement.setString(1, email);
 	        ResultSet rs = statement.executeQuery();
 
-	        return rs.next(); // nếu có kết quả ⇒ đã tồn tại
+	        return rs.next(); 
 	    } catch (SQLException e) {
 	        e.printStackTrace();
 	    }
 
-	    return false; // nếu lỗi hoặc không tìm thấy ⇒ không tồn tại
+	    return false; 
 	}
+	
+	public User getUserById(int userId) {
+		String sql = "SELECT * FROM users WHERE id = ?";
+		
+		try (Connection conn = DBUtils.getConnection();
+	             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+	            stmt.setInt(1, userId);
+	            ResultSet rs = stmt.executeQuery();
+
+	            if (rs.next()) {
+	                User user = new User();
+	                user.setId(rs.getInt("id"));
+	                user.setEmail(rs.getString("email"));
+	                user.setPassword(rs.getString("password")); // hashed password
+	                user.setUsername(rs.getString("username"));
+	                return user;
+	            }
+	        } catch (SQLException e) {
+	            e.printStackTrace();
+	        }
+	        return null;
+	  }
 
 }

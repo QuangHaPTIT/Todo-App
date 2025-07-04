@@ -370,10 +370,16 @@
         }
 
         .task-tag {
-            background: #ffebee;
-            color: #c62828;
-            padding: 4px 8px;
+            display: inline-block;
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 2px 8px;
+            margin-right: 8px;
             border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .chevron {
@@ -666,6 +672,152 @@
             border-color: #4a90e2;
             color: #4a90e2;
         }
+
+        /* Tag Management Styles */
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .tag-item {
+            position: relative;
+            flex: 0 1 calc(50% - 4px);
+            min-width: 0;
+            margin-bottom: 8px;
+        }
+        
+        .tag {
+            display: block;
+            width: 100%;
+            padding: 8px 20px 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: relative;
+            box-sizing: border-box;
+        }
+        
+        .tag:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .tag-delete-btn {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ff4757;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            line-height: 1;
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+        
+        .tag-delete-btn:hover {
+            background: #ff3838;
+            transform: scale(1.1);
+        }
+        
+        .tag-item:hover .tag-delete-btn {
+            display: flex;
+        }
+        
+        .tag-edit-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.8);
+            color: #666;
+            border: none;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            z-index: 9;
+            transition: all 0.2s ease;
+        }
+        
+        .tag-edit-btn:hover {
+            background: white;
+            color: #333;
+        }
+        
+        .tag-item:hover .tag-edit-btn {
+            display: flex;
+        }
+        
+        .tag-actions {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        
+        .add-tag-form {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .tag-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        
+        .tag-input:focus {
+            border-color: #4a90e2;
+        }
+        
+        .tag-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .tag-color-input {
+            width: 100%;
+            height: 35px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        .tag-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -694,13 +846,24 @@
             <input type="text" class="search-input" placeholder="🔍 Tìm kiếm">
         </div>
 
+        <!-- Quick Actions Section -->
+        <div class="section">
+            <div class="section-title">Tổng quan</div>
+            <a href="home?filter=today" class="menu-item ${param.listId == null ? 'active' : ''}">
+                <div class="menu-item-left">
+                    <span class="menu-item-icon">📅</span>
+                    <span>Tới Hạn Hôm Nay</span>
+                </div>
+            </a>
+        </div>
+
         <!-- Task Lists Section -->
         <div class="section">
             <div class="section-title">Danh sách công việc</div>
             <c:forEach var="taskList" items="${taskLists}">
                 <a href="home?listId=${taskList.listId}" class="menu-item ${param.listId == taskList.listId ? 'active' : ''}">
                     <div class="menu-item-left">
-                        <span class="list-dot" style="background: ${taskList.colorCode}"></span>
+                        
                         <c:choose>
                             <c:when test="${not empty taskList.icon}">
                                 <span class="menu-item-icon">${taskList.icon}</span>
@@ -710,9 +873,7 @@
                             </c:otherwise>
                         </c:choose>
                         <span>${taskList.listName}</span>
-                        <span class="menu-item-count">
-                            <c:out value="${taskList.taskCount}"/>
-                        </span>
+                        
                     </div>
                     <form action="taskLists" method="post" style="display: inline;">
                         <input type="hidden" name="action" value="delete">
@@ -742,10 +903,65 @@
         <!-- Tags Section -->
         <div class="section">
             <div class="section-title">Thẻ</div>
-            <c:forEach var="tag" items="${tags}">
-                <span class="tag" style="background: ${tag.colorCode}; color: ${tag.textColor}">${tag.tagName}</span>
-            </c:forEach>
-            <a href="#" style="color: #666; text-decoration: none; font-size: 12px;">+ Thêm thẻ</a>
+            <div class="tags-container">
+                <c:forEach var="tag" items="${tags}">
+                    <div class="tag-item">
+                        <span class="tag" style="background: ${tag.colorCode}; color: ${tag.textColor};" title="${tag.tagName}">${tag.tagName}</span>
+                        <button class="tag-edit-btn" onclick="editTag(${tag.tagId}, '${tag.tagName}', '${tag.colorCode}', '${tag.textColor}')" title="Sửa thẻ">✏️</button>
+                        <form action="tag" method="post" style="display: inline; margin: 0;" onsubmit="return confirm('Bạn có chắc muốn xóa thẻ này?')">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="tagId" value="${tag.tagId}">
+                            <button type="submit" class="tag-delete-btn" title="Xóa thẻ">×</button>
+                        </form>
+                    </div>
+                </c:forEach>
+            </div>
+            <a href="#" onclick="showAddTagForm()" style="color: #666; text-decoration: none; font-size: 12px;">+ Thêm thẻ</a>
+
+            <!-- Form thêm thẻ mới -->
+            <div id="addTagForm" class="add-tag-form hidden">
+                <form action="tag" method="post">
+                    <input type="hidden" name="action" value="add">
+                    <input type="text" name="tagName" class="tag-input" placeholder="Nhập tên thẻ..." required>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <div style="flex: 1;">
+                            <label class="tag-label">Màu nền:</label>
+                            <input type="color" name="colorCode" class="tag-color-input" value="#007bff">
+                        </div>
+                        <div style="flex: 1;">
+                            <label class="tag-label">Màu chữ:</label>
+                            <input type="color" name="textColor" class="tag-color-input" value="#ffffff">
+                        </div>
+                    </div>
+                    <div class="tag-actions">
+                        <button type="submit" class="btn-sm btn-primary">Thêm thẻ</button>
+                        <button type="button" class="btn-sm btn-secondary" onclick="hideAddTagForm()">Hủy</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Form sửa thẻ -->
+            <div id="editTagForm" class="add-tag-form hidden">
+                <form action="tag" method="post">
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="tagId" id="editTagId" value="">
+                    <input type="text" name="tagName" id="editTagName" class="tag-input" placeholder="Nhập tên thẻ..." required>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <div style="flex: 1;">
+                            <label class="tag-label">Màu nền:</label>
+                            <input type="color" name="colorCode" id="editTagColorCode" class="tag-color-input" value="#007bff">
+                        </div>
+                        <div style="flex: 1;">
+                            <label class="tag-label">Màu chữ:</label>
+                            <input type="color" name="textColor" id="editTagTextColor" class="tag-color-input" value="#ffffff">
+                        </div>
+                    </div>
+                    <div class="tag-actions">
+                        <button type="submit" class="btn-sm btn-primary">Cập nhật thẻ</button>
+                        <button type="button" class="btn-sm btn-secondary" onclick="hideEditTagForm()">Hủy</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <!-- Settings -->
@@ -762,13 +978,16 @@
     <!-- Main Content -->
     <div class="main-content">
         <!-- Hiển thị thông báo -->
+        <!--
         <c:if test="${not empty message}">
             <div class="message-box success">${message}</div>
         </c:if>
+        -->
+        <!--
         <c:if test="${not empty error}">
             <div class="message-box error">${error}</div>
         </c:if>
-
+		-->
         <div class="main-header">
             <div class="header-top">
                 <div style="display: flex; align-items: center;">
@@ -778,7 +997,7 @@
                                 <c:when test="${param.listId != null && selectedTaskList != null}">
                                     ${selectedTaskList.listName}
                                 </c:when>
-                                <c:otherwise>Hôm nay</c:otherwise>
+                                <c:otherwise>Tới Hạn Hôm Nay</c:otherwise>
                             </c:choose>
                         </h1>
                     </div>
@@ -787,7 +1006,7 @@
                     </div>
                 </div>
                 <!-- Nút thêm task (hiển thị khi chọn danh sách) -->
-                <c:if test="${param.listId != null}">
+                <c:if test="${param.listId != null && param.filter != 'today'}">
                     <button class="add-task-btn" onclick="toggleAddTaskForm()" id="addTaskBtn" style="border: none; background: #4a90e2; color: white;">
                         <span style="font-size: 16px; margin-right: 8px;">➕</span>
                         <span>Thêm công việc mới</span>
@@ -796,7 +1015,7 @@
             </div>
 
             <!-- Form thêm công việc mới (ẩn mặc định) -->
-            <c:if test="${param.listId != null}">
+            <c:if test="${param.listId != null && param.filter != 'today'}">
                 <div id="addTaskForm" class="add-task-form hidden">
                     <form action="TaskController" method="post" style="display: flex; flex-direction: column; gap: 10px;">
                         <input type="hidden" name="action" value="add">
@@ -868,6 +1087,12 @@
                                         <c:if test="${task.description != null && !task.description.isEmpty()}">
                                             <span class="task-subtasks">${task.description}</span>
                                         </c:if>
+                                        <!-- Tag cho task cha -->
+                                        <c:if test="${task.parentTaskId == null || task.parentTaskId == 0}">
+                                            <span class="task-tag" style="background: #e3f2fd; color: #1976d2; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 8px;">
+                                                🏷️ Task Cha
+                                            </span>
+                                        </c:if>
                                         <c:if test="${task.priority != null}">
                                             <span class="task-tag" style="background: 
                                                 <c:choose>
@@ -882,6 +1107,7 @@
                                                 </c:choose>
                                             </span>
                                         </c:if>
+                                        
                                         <!-- Hiển thị số lượng subtasks -->
                                         <c:if test="${subtasksMap[task.taskId] != null && subtasksMap[task.taskId].size() > 0}">
                                             <span class="task-subtasks">📝 ${subtasksMap[task.taskId].size()} subtask(s)</span>
@@ -1244,6 +1470,47 @@
         
         function hideAddSubtaskForm(taskId) {
             const form = document.getElementById('add-subtask-' + taskId);
+            form.classList.add('hidden');
+            form.querySelector('form').reset();
+        }
+
+        // Tag Management Functions
+        function showAddTagForm() {
+            const form = document.getElementById('addTagForm');
+            const editForm = document.getElementById('editTagForm');
+            
+            // Hide edit form if open
+            editForm.classList.add('hidden');
+            
+            form.classList.remove('hidden');
+            form.querySelector('input[name="tagName"]').focus();
+        }
+
+        function hideAddTagForm() {
+            const form = document.getElementById('addTagForm');
+            form.classList.add('hidden');
+            form.querySelector('form').reset();
+        }
+
+        function editTag(tagId, tagName, colorCode, textColor) {
+            const form = document.getElementById('editTagForm');
+            const addForm = document.getElementById('addTagForm');
+            
+            // Hide add form if open
+            addForm.classList.add('hidden');
+            
+            // Fill the edit form
+            document.getElementById('editTagId').value = tagId;
+            document.getElementById('editTagName').value = tagName;
+            document.getElementById('editTagColorCode').value = colorCode;
+            document.getElementById('editTagTextColor').value = textColor;
+            
+            form.classList.remove('hidden');
+            form.querySelector('input[name="tagName"]').focus();
+        }
+
+        function hideEditTagForm() {
+            const form = document.getElementById('editTagForm');
             form.classList.add('hidden');
             form.querySelector('form').reset();
         }

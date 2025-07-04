@@ -133,6 +133,14 @@ public class TaskListDao {
         int displayOrder = rs.getInt("display_order");
         LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
         
-        return new TaskList(listId, userId, listName, colorCode, icon, displayOrder, createdAt);
+        return new TaskList(
+        		listId, 
+        		userId, 
+        		listName, 
+        		colorCode, 
+        		icon, 
+        		displayOrder, 
+        		createdAt
+        	);
     }
 }
